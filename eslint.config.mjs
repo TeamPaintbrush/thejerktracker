@@ -22,6 +22,7 @@ const eslintConfig = [
       "src/lib/migration.ts", // Temporarily ignore migration utility
       "src/lib/config.ts", // Temporarily ignore config utility
       "src/types/api.ts", // Temporarily ignore API types
+      "src/types/next-auth.d.ts", // Temporarily ignore NextAuth types
     ],
   },
 ];

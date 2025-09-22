@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Order } from '@/types/order';
 import { getAllOrders, addOrder, exportToCSV, getStatusColor } from '@/lib/dataStore';
 import { QRCodeSVG } from 'qrcode.react';
-import { Plus, Download, RefreshCw, ToggleLeft, ToggleRight, Search, Filter, Edit3 } from 'lucide-react';
+import { Plus, Download, RefreshCw, ToggleLeft, ToggleRight, Search, Filter, Edit3, LogOut, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -12,7 +14,10 @@ import StatusUpdate from '@/components/StatusUpdate';
 import MigrationPanel from '@/components/MigrationPanel';
 
 export default function AdminDashboard() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
+  
   const [orderNumber, setOrderNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -29,6 +34,15 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showMigrationPanel, setShowMigrationPanel] = useState(false);
+
+  // Redirect to sign in if not authenticated
+  useEffect(() => {
+    if (status === 'loading') return; // Still loading
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+  }, [session, status, router]);
 
   useEffect(() => {
     const fetchOrders = () => {
@@ -65,10 +79,40 @@ export default function AdminDashboard() {
           message: 'Could not refresh orders automatically.',
         });
       }
-    }, 3000); // Refresh every 3 seconds
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
   }, [autoRefresh, showToast]);
+
+  // Show loading while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!session) {
+    return null;
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut({ callbackUrl: '/auth/signin' });
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showToast({
+        type: 'error',
+        title: 'Sign Out Failed',
+        message: 'There was an error signing out. Please try again.',
+      });
+    }
+  };
 
   const handleExportToCSV = () => {
     try {
@@ -242,7 +286,30 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Admin Dashboard</h1>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Admin Dashboard</h1>
+            
+            {/* User Info and Logout */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                <span>Welcome, {session.user?.name || session.user?.email}</span>
+                {session.user?.role && (
+                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                    {session.user.role}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
+          </div>
           
           {/* Create Order Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6 sm:mb-8">
