@@ -6,6 +6,7 @@ const nextConfig = {
   output: 'export', // Enable static export for GitHub Pages
   basePath: '/thejerktracker', // GitHub Pages subdirectory
   assetPrefix: '/thejerktracker', // Asset prefix for GitHub Pages
+  distDir: 'out', // Output directory for GitHub Pages
   
   images: {
     unoptimized: true,
