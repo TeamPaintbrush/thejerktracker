@@ -3,10 +3,6 @@ const nextConfig = {
   trailingSlash: true,
   reactStrictMode: true,
   poweredByHeader: false, // Remove X-Powered-By header for security
-  output: 'export', // Enable static export for GitHub Pages
-  distDir: 'dist', // Output directory for GitHub Pages
-  basePath: '/thejerktracker', // GitHub Pages subdirectory
-  assetPrefix: '/thejerktracker', // Asset prefix for GitHub Pages
   
   images: {
     unoptimized: true,

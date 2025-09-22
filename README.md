@@ -1,4 +1,4 @@
-# TheJERKTracker 🥡
+# TheJERKTracker 🍽️
 
 **Restaurant Pickup Tracking System with QR Code Integration**
 
@@ -7,6 +7,40 @@ A modern, responsive web application built with Next.js that helps restaurants t
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
+## 🚀 Quick Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/TeamPaintbrush/thejerktracker)
+
+### Manual Deployment Steps:
+
+1. **Sign up/Login to Vercel**
+   - Go to https://vercel.com
+   - Click "Continue with GitHub"
+   - Authorize Vercel to access your repositories
+
+2. **Import Project**
+   - Click "Add New Project"
+   - Select your `thejerktracker` repository
+   - Click "Import"
+
+3. **Deploy**
+   - Click "Deploy"
+   - Wait ~2 minutes for build completion
+   - Get your live URL!
+
+## 🎯 Complete Features
+
+✅ **Complete Order Tracking System**  
+✅ **QR Code Generation & Scanning**  
+✅ **Delivery Company Dropdown Selection**  
+✅ **Auto-Redirect After Pickup**  
+✅ **Print-Friendly Receipts**  
+✅ **Advanced Date Range Filtering**  
+✅ **CSV Export Functionality**  
+✅ **Role-Based User Management**  
+✅ **Security & Authentication**  
+✅ **Mobile-Responsive Design**
 
 ## 🌟 Features
 
