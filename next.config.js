@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Updated for Vercel deployment - QR code functionality enabled
 const nextConfig = {
   trailingSlash: true,
   reactStrictMode: true,
