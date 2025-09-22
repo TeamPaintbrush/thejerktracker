@@ -1,0 +1,45 @@
+{
+  "name": "thejerktracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 1456",
+    "dev:turbo": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "export": "next export",
+    "build:static": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepare": "husky install || true"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@next/font": "^14.2.15",
+    "@prisma/client": "^6.16.2",
+    "chart.js": "^4.5.0",
+    "framer-motion": "^12.23.16",
+    "lucide-react": "^0.544.0",
+    "next": "15.5.3",
+    "qrcode.react": "^4.2.0",
+    "react": "19.1.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.3",
+    "prisma": "^6.16.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
