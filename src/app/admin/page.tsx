@@ -6,12 +6,14 @@ import { useRouter } from 'next/navigation';
 import { Order } from '@/types/order';
 import { getAllOrders, addOrder, exportToCSV, getStatusColor } from '@/lib/dataStore';
 import { QRCodeSVG } from 'qrcode.react';
-import { Plus, Download, RefreshCw, ToggleLeft, ToggleRight, Search, Filter, Edit3, LogOut, User } from 'lucide-react';
+import { Plus, Download, RefreshCw, ToggleLeft, ToggleRight, Search, Filter, Edit3, LogOut, User, Shield, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import StatusUpdate from '@/components/StatusUpdate';
 import MigrationPanel from '@/components/MigrationPanel';
+import { PrintableReceipt } from '@/components/PrintableReceipt';
+import { RoleGuard } from '@/hooks/useRoleAccess';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -34,6 +36,8 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showMigrationPanel, setShowMigrationPanel] = useState(false);
+  const [showPrintReceipt, setShowPrintReceipt] = useState(false);
+  const [printOrder, setPrintOrder] = useState<Order | null>(null);
 
   // Redirect to sign in if not authenticated
   useEffect(() => {
@@ -281,6 +285,49 @@ export default function AdminDashboard() {
     setDateRange({ start: '', end: '' });
   };
 
+  const setDateRangePreset = (preset: string) => {
+    const today = new Date();
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    switch (preset) {
+      case 'today':
+        const todayStr = formatDate(today);
+        setDateRange({ start: todayStr, end: todayStr });
+        setFilterDate('');
+        break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const yesterdayStr = formatDate(yesterday);
+        setDateRange({ start: yesterdayStr, end: yesterdayStr });
+        setFilterDate('');
+        break;
+      case 'last7days':
+        const last7Days = new Date(today);
+        last7Days.setDate(today.getDate() - 7);
+        setDateRange({ start: formatDate(last7Days), end: formatDate(today) });
+        setFilterDate('');
+        break;
+      case 'last30days':
+        const last30Days = new Date(today);
+        last30Days.setDate(today.getDate() - 30);
+        setDateRange({ start: formatDate(last30Days), end: formatDate(today) });
+        setFilterDate('');
+        break;
+      case 'thisWeek':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        setDateRange({ start: formatDate(startOfWeek), end: formatDate(today) });
+        setFilterDate('');
+        break;
+      case 'thisMonth':
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        setDateRange({ start: formatDate(startOfMonth), end: formatDate(today) });
+        setFilterDate('');
+        break;
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
@@ -289,13 +336,34 @@ export default function AdminDashboard() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Admin Dashboard</h1>
             
-            {/* User Info and Logout */}
+            {/* User Info and Controls */}
             <div className="flex items-center gap-4">
+              {/* Role-based Admin Controls */}
+              <RoleGuard roles="ADMIN">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowMigrationPanel(!showMigrationPanel)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Data Migration"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">Migration</span>
+                  </button>
+                </div>
+              </RoleGuard>
+
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <User className="w-4 h-4" />
                 <span>Welcome, {session.user?.name || session.user?.email}</span>
                 {session.user?.role && (
-                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    session.user.role === 'ADMIN' 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : session.user.role === 'STAFF'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    <Shield className="w-3 h-3 inline mr-1" />
                     {session.user.role}
                   </span>
                 )}
@@ -405,34 +473,48 @@ export default function AdminDashboard() {
                     {qrUrl}
                   </a>
                 </div>
+                <button
+                  onClick={() => {
+                    const latestOrder = orders[0]; // Get the most recently created order
+                    if (latestOrder) {
+                      setPrintOrder(latestOrder);
+                      setShowPrintReceipt(true);
+                    }
+                  }}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm flex items-center gap-2"
+                >
+                  🖨️ Print Receipt
+                </button>
               </div>
             </motion.div>
           )}
         </div>
 
-        {/* Data Migration Panel */}
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Data Migration</h2>
-            <button
-              onClick={() => setShowMigrationPanel(!showMigrationPanel)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
-            >
-              {showMigrationPanel ? 'Hide Migration Panel' : 'Show Migration Panel'}
-            </button>
+        {/* Admin-only Migration Panel */}
+        <RoleGuard roles="ADMIN">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Data Migration</h2>
+              <button
+                onClick={() => setShowMigrationPanel(!showMigrationPanel)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+              >
+                {showMigrationPanel ? 'Hide Migration Panel' : 'Show Migration Panel'}
+              </button>
+            </div>
+            
+            {showMigrationPanel && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <MigrationPanel />
+              </motion.div>
+            )}
           </div>
-          
-          {showMigrationPanel && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <MigrationPanel />
-            </motion.div>
-          )}
-        </div>
+        </RoleGuard>
 
         {/* Orders List */}
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
@@ -515,34 +597,80 @@ export default function AdminDashboard() {
             </div>
 
             {/* Date range filters */}
-            <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-4 sm:items-center">
-              <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                <span className="text-xs sm:text-sm text-gray-600">Date Range:</span>
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                <span className="hidden sm:inline text-gray-500">to</span>
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
+            <div className="space-y-3">
+              {/* Quick date presets */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs sm:text-sm text-gray-600 self-center">Quick filters:</span>
+                <button
+                  onClick={() => setDateRangePreset('today')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setDateRangePreset('yesterday')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Yesterday
+                </button>
+                <button
+                  onClick={() => setDateRangePreset('thisWeek')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  This Week
+                </button>
+                <button
+                  onClick={() => setDateRangePreset('last7days')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  onClick={() => setDateRangePreset('thisMonth')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  This Month
+                </button>
+                <button
+                  onClick={() => setDateRangePreset('last30days')}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Last 30 Days
+                </button>
               </div>
               
-              <div className="hidden sm:block text-sm text-gray-500">OR</div>
-              
-              <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                <span className="text-xs sm:text-sm text-gray-600">Single Date:</span>
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
+              {/* Custom date range */}
+              <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-4 sm:items-center">
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                  <span className="text-xs sm:text-sm text-gray-600">Custom Range:</span>
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Start date"
+                  />
+                  <span className="hidden sm:inline text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="End date"
+                  />
+                </div>
+                
+                <div className="hidden sm:block text-sm text-gray-500">OR</div>
+                
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                  <span className="text-xs sm:text-sm text-gray-600">Single Date:</span>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
               </div>
             </div>
             
@@ -689,6 +817,33 @@ export default function AdminDashboard() {
               <StatusUpdate 
                 order={selectedOrder} 
                 onUpdate={handleStatusUpdate}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Receipt Modal */}
+      {showPrintReceipt && printOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">Print Receipt</h2>
+                <button
+                  onClick={() => {
+                    setShowPrintReceipt(false);
+                    setPrintOrder(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <PrintableReceipt 
+                order={printOrder} 
+                qrUrl={`${window.location.origin}/order?id=${printOrder.id}`}
               />
             </div>
           </div>

@@ -8,8 +8,8 @@ declare module 'next-auth' {
       email: string
       name: string
       role: UserRole
-      restaurantId: string
-      restaurant: {
+      restaurantId?: string
+      restaurant?: {
         id: string
         name: string
         email: string
@@ -22,8 +22,8 @@ declare module 'next-auth' {
     email: string
     name: string
     role: UserRole
-    restaurantId: string
-    restaurant: {
+    restaurantId?: string
+    restaurant?: {
       id: string
       name: string
       email: string
@@ -34,8 +34,8 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     role: UserRole
-    restaurantId: string
-    restaurant: {
+    restaurantId?: string
+    restaurant?: {
       id: string
       name: string
       email: string

@@ -1,5 +1,36 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { requireStaffOrAdmin } from '@/lib/auth'
+import { createOrderSchema, queryParamsSchema } from '@/lib/validation'
+import { ValidatedRequest } from '@/lib/validation-middleware'
+import { z } from 'zod'
+
+// Extended order schema for this API
+const createOrderWithItemsSchema = z.object({
+  orderNumber: z.string().min(1, 'Order number is required').max(50, 'Order number must be less than 50 characters'),
+  customerName: z.string().min(1, 'Customer name is required').max(100, 'Customer name must be less than 100 characters'),
+  customerEmail: z.string().email('Invalid email format'),
+  customerPhone: z.string().min(10, 'Phone number must be at least 10 characters').max(20, 'Phone number must be less than 20 characters'),
+  orderDetails: z.string().min(1, 'Order details are required').max(2000, 'Order details must be less than 2000 characters'),
+  totalAmount: z.number().min(0, 'Total amount must be non-negative'),
+  status: z.enum(['PENDING', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED']).optional().default('PENDING'),
+  restaurantId: z.string().uuid('Invalid restaurant ID'),
+  orderType: z.enum(['TAKEOUT', 'DELIVERY', 'DINE_IN']).optional().default('TAKEOUT'),
+  notes: z.string().max(1000, 'Notes must be less than 1000 characters').optional(),
+  specialRequests: z.string().max(500, 'Special requests must be less than 500 characters').optional(),
+  deliveryAddress: z.string().max(500, 'Delivery address must be less than 500 characters').optional(),
+  items: z.array(z.object({
+    name: z.string().min(1, 'Item name is required').max(200, 'Item name must be less than 200 characters'),
+    quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+    price: z.number().min(0, 'Price must be non-negative'),
+    notes: z.string().max(200, 'Item notes must be less than 200 characters').optional(),
+  })).min(1, 'Order must include at least one item'),
+})
+
+const ordersQuerySchema = queryParamsSchema.extend({
+  restaurantId: z.string().uuid('Invalid restaurant ID').optional(),
+  orderType: z.enum(['TAKEOUT', 'DELIVERY', 'DINE_IN']).optional(),
+})
 
 export default async function handler(
   req: NextApiRequest,
@@ -22,21 +53,62 @@ export default async function handler(
 }
 
 async function handleGetOrders(req: NextApiRequest, res: NextApiResponse) {
-  const { restaurantId, status, page = '1', limit = '10' } = req.query
+  // Require authentication for getting orders
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
 
-  // Build where clause
+  // Validate query parameters
+  const queryValidation = ordersQuerySchema.safeParse(req.query)
+  if (!queryValidation.success) {
+    const errors = queryValidation.error.issues.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }))
+    return res.status(400).json({
+      error: 'Invalid query parameters',
+      details: errors,
+    })
+  }
+
+  const { 
+    restaurantId, 
+    status, 
+    orderType,
+    page = 1, 
+    limit = 10,
+    search 
+  } = queryValidation.data
+
+  // Build where clause with restaurant restriction
   const where: any = {}
-  if (restaurantId && typeof restaurantId === 'string') {
+  
+  // Users can only see orders from their restaurant (unless they're admin)
+  if (authenticatedReq.user.role !== 'ADMIN') {
+    where.restaurantId = authenticatedReq.user.restaurantId
+  } else if (restaurantId) {
     where.restaurantId = restaurantId
   }
-  if (status && typeof status === 'string') {
+  
+  if (status) {
     where.status = status
   }
 
+  if (orderType) {
+    where.orderType = orderType
+  }
+
+  // Add search functionality
+  if (search) {
+    where.OR = [
+      { orderNumber: { contains: search, mode: 'insensitive' } },
+      { customerName: { contains: search, mode: 'insensitive' } },
+      { customerEmail: { contains: search, mode: 'insensitive' } },
+      { customerPhone: { contains: search, mode: 'insensitive' } },
+    ]
+  }
+
   // Pagination
-  const pageNum = parseInt(page as string, 10)
-  const limitNum = parseInt(limit as string, 10)
-  const skip = (pageNum - 1) * limitNum
+  const skip = (page - 1) * limit
 
   try {
     const [orders, totalCount] = await Promise.all([
@@ -53,22 +125,22 @@ async function handleGetOrders(req: NextApiRequest, res: NextApiResponse) {
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limitNum
+        take: limit
       }),
       prisma.order.count({ where })
     ])
 
-    const totalPages = Math.ceil(totalCount / limitNum)
+    const totalPages = Math.ceil(totalCount / limit)
 
     return res.status(200).json({
       orders,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page,
+        limit,
         totalCount,
         totalPages,
-        hasNextPage: pageNum < totalPages,
-        hasPreviousPage: pageNum > 1
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
       }
     })
   } catch (error) {
@@ -78,6 +150,23 @@ async function handleGetOrders(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleCreateOrder(req: NextApiRequest, res: NextApiResponse) {
+  // Require authentication for creating orders
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
+
+  // Validate request body
+  const bodyValidation = createOrderWithItemsSchema.safeParse(req.body)
+  if (!bodyValidation.success) {
+    const errors = bodyValidation.error.issues.map(err => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }))
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: errors,
+    })
+  }
+
   const {
     orderNumber,
     customerName,
@@ -89,20 +178,20 @@ async function handleCreateOrder(req: NextApiRequest, res: NextApiResponse) {
     specialRequests,
     deliveryAddress,
     restaurantId,
-    items = [],
-    createdById
-  } = req.body
+    items,
+    orderDetails
+  } = bodyValidation.data
 
-  // Basic validation
-  if (!orderNumber || !customerName || !customerPhone || !totalAmount || !restaurantId) {
-    return res.status(400).json({
-      error: 'Missing required fields: orderNumber, customerName, customerPhone, totalAmount, restaurantId'
-    })
+  // Determine which restaurant to use
+  let targetRestaurantId: string | undefined = restaurantId
+  if (authenticatedReq.user.role !== 'ADMIN') {
+    // Non-admin users can only create orders for their restaurant
+    targetRestaurantId = authenticatedReq.user.restaurantId
   }
 
-  if (!Array.isArray(items) || items.length === 0) {
+  if (!targetRestaurantId) {
     return res.status(400).json({
-      error: 'Order must include at least one item'
+      error: 'Restaurant ID is required'
     })
   }
 
@@ -118,7 +207,7 @@ async function handleCreateOrder(req: NextApiRequest, res: NextApiResponse) {
 
     // Verify restaurant exists
     const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId }
+      where: { id: targetRestaurantId }
     })
 
     if (!restaurant) {
@@ -133,18 +222,18 @@ async function handleCreateOrder(req: NextApiRequest, res: NextApiResponse) {
           customerName,
           customerPhone,
           customerEmail,
-          totalAmount: parseFloat(totalAmount.toString()),
+          totalAmount,
           orderType,
           notes,
           specialRequests,
           deliveryAddress,
-          restaurantId,
-          createdById,
+          restaurantId: targetRestaurantId,
+          createdById: authenticatedReq.user.id,
           items: {
             create: items.map((item: any) => ({
               name: item.name,
-              quantity: parseInt(item.quantity.toString(), 10),
-              price: parseFloat(item.price.toString()),
+              quantity: item.quantity,
+              price: item.price,
               notes: item.notes
             }))
           }

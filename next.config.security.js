@@ -1,17 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  trailingSlash: true,
   reactStrictMode: true,
-  poweredByHeader: false, // Remove X-Powered-By header for security
+  poweredByHeader: false, // Remove X-Powered-By header
   
-  images: {
-    unoptimized: true,
-    domains: [], // Restrict image domains for security
-    dangerouslyAllowSVG: false,
-    contentDispositionType: 'attachment',
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-  },
-
   // Security headers
   async headers() {
     return [
@@ -61,17 +52,12 @@ const nextConfig = {
         destination: '/404',
         permanent: true,
       },
-      {
-        source: '/.env',
-        destination: '/404',
-        permanent: true,
-      },
-      {
-        source: '/config/:path*',
-        destination: '/404',
-        permanent: true,
-      },
     ];
+  },
+
+  // Environment variables validation
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
 
   // Webpack configuration for security
@@ -83,12 +69,25 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
-        crypto: false,
       };
     }
     
     return config;
   },
-}
 
-module.exports = nextConfig
+  // Image optimization security
+  images: {
+    domains: [],
+    dangerouslyAllowSVG: false,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+
+  // Experimental features for security
+  experimental: {
+    // Runtime validation
+    typedRoutes: true,
+  },
+};
+
+module.exports = nextConfig;

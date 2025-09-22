@@ -1,5 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, requireAdmin } from '@/lib/auth'
+import { createRestaurantSchema } from '@/lib/validation'
+import { z } from 'zod'
+
+// Query schema for restaurant listing
+const restaurantsQuerySchema = z.object({
+  search: z.string().max(200, 'Search term must be less than 200 characters').optional(),
+})
 
 export default async function handler(
   req: NextApiRequest,
@@ -22,30 +30,64 @@ export default async function handler(
 }
 
 async function handleGetRestaurants(req: NextApiRequest, res: NextApiResponse) {
+  // Require authentication
+  const authenticatedReq = await requireAuth(req, res)
+  if (!authenticatedReq) return
+
   try {
-    const restaurants = await prisma.restaurant.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        address: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        website: true,
-        description: true,
-        logoUrl: true,
-        createdAt: true,
-        _count: {
-          select: {
-            orders: true,
-            users: true
+    let restaurants
+    
+    if (authenticatedReq.user.role === 'ADMIN') {
+      // Admins can see all restaurants
+      restaurants = await prisma.restaurant.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          website: true,
+          description: true,
+          logoUrl: true,
+          createdAt: true,
+          _count: {
+            select: {
+              orders: true,
+              users: true
+            }
+          }
+        },
+        orderBy: { name: 'asc' }
+      })
+    } else {
+      // Non-admin users can only see their own restaurant
+      restaurants = await prisma.restaurant.findMany({
+        where: { id: authenticatedReq.user.restaurantId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          website: true,
+          description: true,
+          logoUrl: true,
+          createdAt: true,
+          _count: {
+            select: {
+              orders: true,
+              users: true
+            }
           }
         }
-      },
-      orderBy: { name: 'asc' }
-    })
+      })
+    }
 
     return res.status(200).json(restaurants)
   } catch (error) {
@@ -55,6 +97,10 @@ async function handleGetRestaurants(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleCreateRestaurant(req: NextApiRequest, res: NextApiResponse) {
+  // Only admins can create restaurants
+  const authenticatedReq = await requireAdmin(req, res)
+  if (!authenticatedReq) return
+
   const {
     name,
     email,

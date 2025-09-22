@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
+import { requireStaffOrAdmin, requireSameRestaurant } from '@/lib/auth'
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,11 +15,11 @@ export default async function handler(
   try {
     switch (req.method) {
       case 'GET':
-        return handleGetOrder(id, res)
+        return handleGetOrder(id, req, res)
       case 'PUT':
         return handleUpdateOrder(id, req, res)
       case 'DELETE':
-        return handleDeleteOrder(id, res)
+        return handleDeleteOrder(id, req, res)
       default:
         res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
         return res.status(405).json({ error: 'Method not allowed' })
@@ -29,7 +30,11 @@ export default async function handler(
   }
 }
 
-async function handleGetOrder(id: string, res: NextApiResponse) {
+async function handleGetOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
+  // Require authentication
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
+
   try {
     const order = await prisma.order.findUnique({
       where: { id },
@@ -51,6 +56,12 @@ async function handleGetOrder(id: string, res: NextApiResponse) {
       return res.status(404).json({ error: 'Order not found' })
     }
 
+    // Check restaurant access (non-admin users can only access their restaurant's orders)
+    if (authenticatedReq.user.role !== 'ADMIN' && 
+        order.restaurantId !== authenticatedReq.user.restaurantId) {
+      return res.status(403).json({ error: 'Access denied. You can only access orders from your restaurant.' })
+    }
+
     return res.status(200).json(order)
   } catch (error) {
     console.error('Error fetching order:', error)
@@ -59,6 +70,10 @@ async function handleGetOrder(id: string, res: NextApiResponse) {
 }
 
 async function handleUpdateOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
+  // Require authentication
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
+
   const {
     customerName,
     customerPhone,
@@ -86,9 +101,15 @@ async function handleUpdateOrder(id: string, req: NextApiRequest, res: NextApiRe
       return res.status(404).json({ error: 'Order not found' })
     }
 
+    // Check restaurant access (non-admin users can only update their restaurant's orders)
+    if (authenticatedReq.user.role !== 'ADMIN' && 
+        existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
+      return res.status(403).json({ error: 'Access denied. You can only update orders from your restaurant.' })
+    }
+
     // Prepare update data
     const updateData: any = {
-      updatedById
+      updatedById: authenticatedReq.user.id
     }
 
     if (customerName) updateData.customerName = customerName
@@ -155,7 +176,11 @@ async function handleUpdateOrder(id: string, req: NextApiRequest, res: NextApiRe
   }
 }
 
-async function handleDeleteOrder(id: string, res: NextApiResponse) {
+async function handleDeleteOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
+  // Require admin role for deleting orders
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
+
   try {
     // Verify order exists
     const existingOrder = await prisma.order.findUnique({
@@ -164,6 +189,12 @@ async function handleDeleteOrder(id: string, res: NextApiResponse) {
 
     if (!existingOrder) {
       return res.status(404).json({ error: 'Order not found' })
+    }
+
+    // Check restaurant access (non-admin users can only delete their restaurant's orders)
+    if (authenticatedReq.user.role !== 'ADMIN' && 
+        existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
+      return res.status(403).json({ error: 'Access denied. You can only delete orders from your restaurant.' })
     }
 
     // Delete order (items will be deleted due to cascade)

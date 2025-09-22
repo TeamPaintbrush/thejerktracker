@@ -9,7 +9,12 @@ export interface AuthenticatedRequest extends NextApiRequest {
     email: string
     name: string
     role: UserRole
-    restaurantId: string
+    restaurantId?: string
+    restaurant?: {
+      id: string
+      name: string
+      email: string
+    }
   }
 }
 
@@ -67,7 +72,7 @@ export async function requireStaffOrAdmin(
 
 // Check if user belongs to the same restaurant
 export function checkSameRestaurant(
-  userRestaurantId: string,
+  userRestaurantId: string | undefined,
   targetRestaurantId: string
 ): boolean {
   return userRestaurantId === targetRestaurantId

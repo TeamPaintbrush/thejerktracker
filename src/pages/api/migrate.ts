@@ -5,6 +5,17 @@ import {
   clearLegacyData, 
   getMigrationStatus 
 } from '@/lib/migration'
+import { z } from 'zod'
+
+// Migration action schema
+const migrationActionSchema = z.object({
+  action: z.enum(['migrate', 'backup', 'clear']),
+  restaurantId: z.string().uuid('Invalid restaurant ID').optional(),
+  options: z.object({
+    skipExisting: z.boolean().optional().default(false),
+    batchSize: z.number().int().min(1).max(1000).optional().default(100),
+  }).optional(),
+})
 
 export default async function handler(
   req: NextApiRequest,

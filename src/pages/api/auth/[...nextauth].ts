@@ -80,10 +80,10 @@ export default NextAuth({
     },
     async session({ session, token }) {
       // Send properties to the client
-      if (token && session.user) {
-        session.user.id = token.sub as string
+      if (token?.sub && session.user) {
+        session.user.id = token.sub
         session.user.role = token.role as UserRole
-        session.user.restaurantId = token.restaurantId as string
+        session.user.restaurantId = token.restaurantId as string | undefined
         session.user.restaurant = token.restaurant as any
       }
       return session

@@ -7,6 +7,19 @@ import { getOrder, updateOrderStatus } from '@/lib/dataStore';
 import { useToast } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
+// Component to handle auto-redirect after pickup confirmation
+const AutoRedirect = () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.location.href = '/admin';
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return null;
+};
+
 export default function OrderPageClient() {
   const { showToast } = useToast();
   const searchParams = useSearchParams();
@@ -126,11 +139,13 @@ export default function OrderPageClient() {
         <div className="text-center p-6 sm:p-8 bg-white rounded-lg shadow-md max-w-md w-full">
           <h1 className="text-2xl sm:text-3xl font-bold text-green-600 mb-4">✓ Order Confirmed</h1>
           <p className="text-gray-600 mb-4 text-sm sm:text-base">Order #{order.orderNumber} has been picked up!</p>
-          <div className="text-xs sm:text-sm text-gray-500 space-y-1">
+          <div className="text-xs sm:text-sm text-gray-500 space-y-1 mb-4">
             <p>Picked up at: {order.pickedUpAt?.toLocaleString()}</p>
             {order.driverName && <p>Driver: {order.driverName}</p>}
             {order.deliveryCompany && <p>Company: {order.deliveryCompany}</p>}
           </div>
+          <p className="text-xs text-gray-400">Redirecting to admin panel in 3 seconds...</p>
+          <AutoRedirect />
         </div>
       </div>
     );
@@ -172,14 +187,22 @@ export default function OrderPageClient() {
             <label htmlFor="deliveryCompany" className="block text-sm font-medium text-gray-700 mb-1">
               Delivery Company (optional)
             </label>
-            <input
-              type="text"
+            <select
               id="deliveryCompany"
               value={deliveryCompany}
               onChange={(e) => setDeliveryCompany(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="Enter delivery company"
-            />
+              className="w-full border border-gray-300 rounded-md px-3 py-3 sm:py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+            >
+              <option value="">Select delivery company</option>
+              <option value="UberEats">UberEats</option>
+              <option value="DoorDash">DoorDash</option>
+              <option value="GrubHub">GrubHub</option>
+              <option value="Postmates">Postmates</option>
+              <option value="Skip the Dishes">Skip the Dishes</option>
+              <option value="Seamless">Seamless</option>
+              <option value="Deliveroo">Deliveroo</option>
+              <option value="Custom">Custom/Other</option>
+            </select>
           </div>
 
           <button
