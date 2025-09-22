@@ -27,8 +27,9 @@ jobs:
       run: npm ci
 
     - name: Build Next.js app
-      run: npm run build
+      run: npm run build:github
       env:
+        GITHUB_ACTIONS: true
         NEXT_PUBLIC_BASE_PATH: /thejerktracker
 
     - name: Setup Pages
