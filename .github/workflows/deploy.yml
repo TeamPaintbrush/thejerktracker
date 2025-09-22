@@ -1,9 +1,10 @@
 name: Deploy Next.js to GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  # Temporarily disabled to focus on Vercel deployment
+  # push:
+  #   branches: [ main ]
+  workflow_dispatch: # Manual trigger only
 
 permissions:
   contents: read
@@ -30,11 +31,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
+      - name: Setup minimal Prisma for static build
+        run: |
+          cp prisma/schema.github.prisma prisma/schema.prisma
+          npx prisma generate
+        
       - name: Build Next.js app
         run: npm run build:github
         env:
           GITHUB_ACTIONS: true
           NEXT_PUBLIC_BASE_PATH: /thejerktracker
+          DATABASE_URL: "file:./dummy.db"
           
       - name: Setup Pages
         uses: actions/configure-pages@v4

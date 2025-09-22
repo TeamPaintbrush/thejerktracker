@@ -1,0 +1,26 @@
+// Minimal schema for static builds (GitHub Actions)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dummy.db"
+}
+
+// Minimal models for static generation
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String
+}
+
+model Restaurant {
+  id   String @id @default(cuid())
+  name String
+}
+
+model Order {
+  id     String @id @default(cuid())
+  status String
+}
