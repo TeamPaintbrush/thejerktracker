@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import StatusUpdate from '@/components/StatusUpdate';
+import MigrationPanel from '@/components/MigrationPanel';
 
 export default function AdminDashboard() {
   const { showToast } = useToast();
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showMigrationPanel, setShowMigrationPanel] = useState(false);
 
   useEffect(() => {
     const fetchOrders = () => {
@@ -337,6 +339,30 @@ export default function AdminDashboard() {
                   </a>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Data Migration Panel */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Data Migration</h2>
+            <button
+              onClick={() => setShowMigrationPanel(!showMigrationPanel)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+            >
+              {showMigrationPanel ? 'Hide Migration Panel' : 'Show Migration Panel'}
+            </button>
+          </div>
+          
+          {showMigrationPanel && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <MigrationPanel />
             </motion.div>
           )}
         </div>
