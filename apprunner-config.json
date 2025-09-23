@@ -1,0 +1,32 @@
+{
+  "ServiceName": "thejerktracker-demo",
+  "SourceConfiguration": {
+    "CodeRepository": {
+      "RepositoryUrl": "https://github.com/TeamPaintbrush/thejerktracker",
+      "SourceCodeVersion": {
+        "Type": "BRANCH",
+        "Value": "main"
+      },
+      "CodeConfiguration": {
+        "ConfigurationSource": "API",
+        "CodeConfigurationValues": {
+          "Runtime": "NODEJS_18",
+          "BuildCommand": "npm ci && npm run build:aws",
+          "StartCommand": "npm start",
+          "Port": "3000",
+          "RuntimeEnvironmentVariables": {
+            "NODE_ENV": "production",
+            "DATABASE_URL": "postgresql://thejerktracker:ThejerkTracker2025!@thejerktracker-db.cb6i4a0qipsz.us-west-2.rds.amazonaws.com:5432/postgres",
+            "NEXTAUTH_URL": "https://thejerktracker-demo.us-west-2.awsapprunner.com",
+            "NEXTAUTH_SECRET": "um3RglR8CEgy3+Cl1YgFYy06BZsEzucAC9uHrpoxhzY="
+          }
+        }
+      }
+    },
+    "AutoDeploymentsEnabled": true
+  },
+  "InstanceConfiguration": {
+    "Cpu": "0.25 vCPU",
+    "Memory": "0.5 GB"
+  }
+}
