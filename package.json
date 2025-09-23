@@ -10,6 +10,8 @@
     "build:vercel:test": "cross-env VERCEL=1 npm run build:vercel",
     "build:github": "npm run validate:build && npm run build:github:setup && cross-env GITHUB_ACTIONS=true next build",
     "build:github:setup": "node scripts/db-check.js && echo 'Database check complete'",
+    "build:aws": "cp next.config.aws.js next.config.js && prisma generate && prisma db push && npm run db:seed:aws && next build",
+    "build:aws:setup": "node scripts/aws-setup.js && echo 'AWS setup complete'",
     "validate:build": "node scripts/validate-build.js",
     "export": "next export",
     "build:static": "next build",
@@ -23,12 +25,15 @@
     "test:coverage": "jest --coverage",
     "prepare": "husky install || true",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:aws": "tsx prisma/seed.aws.ts",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:check": "node scripts/db-check.js",
     "setup:db": "node scripts/setup-db.js",
-    "verify:vercel": "node scripts/verify-vercel.js"
+    "setup:aws": "node scripts/aws-setup.js",
+    "verify:vercel": "node scripts/verify-vercel.js",
+    "verify:aws": "node scripts/verify-aws.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -47,6 +52,7 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@aws-amplify/cli": "^12.12.6",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
