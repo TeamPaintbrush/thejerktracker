@@ -3,7 +3,8 @@
   "buildCommand": "npm run build:vercel",
   "public": true,
   "env": {
-    "PRISMA_GENERATE_DATAPROXY": "false"
+    "PRISMA_GENERATE_DATAPROXY": "false",
+    "NEXTAUTH_URL": "https://thejerktracker0.vercel.app"
   },
   "functions": {
     "pages/api/**/*.js": {

@@ -8,8 +8,8 @@ export const config = {
   APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'TheJERKTracker',
   NODE_ENV: process.env.NODE_ENV || 'development',
 
-  // Authentication (for future use)
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+  // Authentication
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' ? 'https://thejerktracker0.vercel.app' : 'http://localhost:3000'),
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'development-secret-key',
 
   // Security
