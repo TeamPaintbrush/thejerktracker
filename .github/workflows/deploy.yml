@@ -1,4 +1,4 @@
-name: Deploy Next.js to GitHub Pages (Static Only)
+name: TheJERKTracker - GitHub Pages Deploy
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 # GitHub Pages deployment - independent of Vercel
 # This workflow creates a static export for GitHub Pages hosting
+# Repository: TeamPaintbrush/thejerktracker (MAIN)
 
 permissions:
   contents: read
