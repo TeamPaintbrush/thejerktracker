@@ -1,5 +1,4 @@
 /** @type {import('next').NextConfig} */
-// Development configuration for local hosting
 const nextConfig = {
   trailingSlash: true,
   reactStrictMode: true,
@@ -10,8 +9,13 @@ const nextConfig = {
     domains: [],
   },
 
-  // For local development - no static export
-  // output: 'export', // Commented out for dev mode
+  // GitHub Pages configuration
+  output: 'export',
+  basePath: '/thejerktracker',
+  assetPrefix: '/thejerktracker/',
+  
+  // Disable server-side features for static export
+  distDir: 'out',
 };
 
 module.exports = nextConfig;
