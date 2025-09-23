@@ -1,0 +1,24 @@
+{
+  "ServiceName": "thejerktracker-app",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "640837413949.dkr.ecr.us-east-1.amazonaws.com/thejerktracker:latest",
+      "ImageConfiguration": {
+        "Port": "3000",
+        "RuntimeEnvironmentVariables": {
+          "NODE_ENV": "production",
+          "PORT": "3000"
+        }
+      },
+      "ImageRepositoryType": "ECR"
+    },
+    "AutoDeploymentsEnabled": false,
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "arn:aws:iam::640837413949:role/AppRunnerECRAccessRole"
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "0.25 vCPU",
+    "Memory": "0.5 GB"
+  }
+}

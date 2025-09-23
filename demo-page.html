@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheJERKTracker - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem;
+        }
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .status {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .description {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        .tech-stack {
+            background: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        .deployment-info {
+            background: #fef3cd;
+            border: 1px solid #fceaae;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .links {
+            margin-top: 2rem;
+        }
+        .link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 0.5rem;
+            transition: background 0.3s;
+        }
+        .link:hover {
+            background: #5a67d8;
+        }
+        .cost-info {
+            background: #e0f7fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎯 TheJERKTracker</div>
+        <div class="status">✅ DEMO RUNNING ON AWS</div>
+        
+        <div class="description">
+            A comprehensive workplace incident reporting and tracking system built with modern web technologies.
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🔐 Role-Based Access</h3>
+                <p>Admin, Manager, and Employee roles with appropriate permissions</p>
+            </div>
+            <div class="feature">
+                <h3>📊 Incident Tracking</h3>
+                <p>Report, track, and manage workplace incidents efficiently</p>
+            </div>
+            <div class="feature">
+                <h3>📈 Analytics Dashboard</h3>
+                <p>Visual insights and reporting on incident trends</p>
+            </div>
+            <div class="feature">
+                <h3>🔍 QR Code Integration</h3>
+                <p>Quick reporting via QR codes for anonymous submissions</p>
+            </div>
+        </div>
+
+        <div class="tech-stack">
+            <h3>💻 Technology Stack</h3>
+            <div class="tech-badges">
+                <span class="badge">Next.js 15</span>
+                <span class="badge">React 19</span>
+                <span class="badge">TypeScript</span>
+                <span class="badge">TailwindCSS</span>
+                <span class="badge">Prisma ORM</span>
+                <span class="badge">PostgreSQL</span>
+                <span class="badge">NextAuth.js</span>
+                <span class="badge">AWS Infrastructure</span>
+            </div>
+        </div>
+
+        <div class="deployment-info">
+            <strong>📡 Deployment Status:</strong><br>
+            This is a static demo page. The full application is currently being deployed on AWS App Runner with RDS PostgreSQL backend.
+        </div>
+
+        <div class="cost-info">
+            <strong>💰 AWS Costs (Pay-as-you-go):</strong><br>
+            App Runner: ~$0.10/hour when active • RDS: ~$0.02/hour • Total: ~$2-5/day during testing
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/TeamPaintbrush/thejerktracker" class="link" target="_blank">
+                📱 View Source Code
+            </a>
+            <a href="#" class="link" onclick="location.reload()">
+                🔄 Refresh Status
+            </a>
+        </div>
+
+        <div style="margin-top: 2rem; color: #666; font-size: 0.9rem;">
+            <p>🚀 Deployed on AWS Infrastructure • Built by TeamPaintbrush</p>
+            <p>Region: us-east-1 • Status: Active</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            const features = document.querySelectorAll('.feature');
+            features.forEach((feature, index) => {
+                feature.style.animationDelay = (index * 0.1) + 's';
+                feature.style.animation = 'fadeInUp 0.6s ease forwards';
+            });
+        });
+    </script>
+
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</body>
+</html>

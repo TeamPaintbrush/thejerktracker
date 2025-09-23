@@ -1,0 +1,38 @@
+{
+  "Version": "1.0",
+  "SourceConfiguration": {
+    "AutoDeploymentsEnabled": true,
+    "CodeRepository": {
+      "RepositoryUrl": "https://github.com/TeamPaintbrush/pre-work-appx",
+      "SourceCodeVersion": {
+        "Type": "BRANCH",
+        "Value": "main"
+      },
+      "SourceDirectory": "thejerktracker"
+    }
+  },
+  "BuildConfiguration": {
+    "BuildCommand": "npm install && npx prisma generate && npm run build",
+    "StartCommand": "npm start",
+    "Runtime": "NODEJS_18",
+    "EnvironmentVariables": {
+      "DATABASE_URL": "postgresql://postgres:TheJERK2025!@thejerktracker-prod.cm9q2ac2m6kl.us-east-1.rds.amazonaws.com:5432/thejerktracker?schema=public",
+      "NEXTAUTH_URL": "https://[SERVICE_URL]",
+      "NEXTAUTH_SECRET": "thejerk-super-secret-production-key-2025-change-me",
+      "NEXT_PUBLIC_APP_URL": "https://[SERVICE_URL]",
+      "NODE_ENV": "production"
+    }
+  },
+  "InstanceConfiguration": {
+    "CPU": "1024",
+    "Memory": "2048"
+  },
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/api/health",
+    "Interval": 10,
+    "Timeout": 5,
+    "HealthyThreshold": 3,
+    "UnhealthyThreshold": 3
+  }
+}

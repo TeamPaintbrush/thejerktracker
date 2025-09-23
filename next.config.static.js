@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
-// Development configuration for local hosting
+// Static export configuration for S3 deployment
 const nextConfig = {
+  output: 'export',
   trailingSlash: true,
   reactStrictMode: true,
   poweredByHeader: false,
@@ -10,8 +11,10 @@ const nextConfig = {
     domains: [],
   },
 
-  // For local development - no static export
-  // output: 'export', // Commented out for dev mode
+  // No base path for S3 - serve from root
+  basePath: '',
+  assetPrefix: '',
+  distDir: 'out',
 };
 
 module.exports = nextConfig;

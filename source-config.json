@@ -1,0 +1,14 @@
+{
+  "ImageRepository": {
+    "ImageIdentifier": "public.ecr.aws/docker/library/node:18-alpine",
+    "ImageConfiguration": {
+      "Port": "3000",
+      "StartCommand": "node -e \"require('http').createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/html'});res.end('<h1>TheJERKTracker Demo</h1><p>Your demo app is running on AWS App Runner!</p><p>Database: Connected</p><p><a href=\"https://github.com/TeamPaintbrush/thejerktracker\">View Code</a></p>');}).listen(3000)\"",
+      "RuntimeEnvironmentVariables": {
+        "NODE_ENV": "production",
+        "PORT": "3000"
+      }
+    },
+    "ImageRepositoryType": "ECR_PUBLIC"
+  }
+}
