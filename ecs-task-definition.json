@@ -1,0 +1,62 @@
+{
+  "family": "thejerktracker-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::640837413949:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::640837413949:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "thejerktracker-container",
+      "image": "640837413949.dkr.ecr.us-west-2.amazonaws.com/thejerktracker:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "value": "https://thejerktracker.yourdomain.com"
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "value": "um3RglR8CEgy3+Cl1YgFYy06BZsEzucAC9uHrpoxhzY="
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-west-2:640837413949:parameter/thejerktracker/database-url"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/thejerktracker",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:3000/api/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

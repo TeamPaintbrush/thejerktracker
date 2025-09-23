@@ -33,7 +33,9 @@
     "setup:db": "node scripts/setup-db.js",
     "setup:aws": "node scripts/aws-setup.js",
     "verify:vercel": "node scripts/verify-vercel.js",
-    "verify:aws": "node scripts/verify-aws.js"
+    "verify:aws": "node scripts/verify-aws.js",
+    "check:aws-status": "node scripts/check-aws-status.js",
+    "check:deployment": "node scripts/check-deployment-status.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

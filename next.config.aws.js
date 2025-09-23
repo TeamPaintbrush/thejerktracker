@@ -3,17 +3,15 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   
-  // AWS Amplify optimizations
+  // AWS ECS deployment optimizations
+  output: 'standalone',
   experimental: {
     outputFileTracingRoot: __dirname,
   },
   
-  // Standalone output for better AWS compatibility
-  output: 'standalone',
-  
   // AWS-specific image optimization
   images: {
-    unoptimized: true, // Amplify handles image optimization
+    unoptimized: true, // ECS handles image optimization
   },
   
   // Security headers for AWS deployment

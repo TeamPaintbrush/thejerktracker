@@ -1,0 +1,71 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js
+.next
+out
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# AWS
+.aws
+amplify
+.amplify
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# nyc test coverage
+.nyc_output
+
+# Prisma
+prisma/migrations
+
+# Vercel
+.vercel
+
+# GitHub Actions
+.github
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+__tests__
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
