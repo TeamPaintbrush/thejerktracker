@@ -1,0 +1,35 @@
+{
+  "name": "TheJERKTracker Development Environment",
+  "dockerFile": "Dockerfile",
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js App",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "DynamoDB Local",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "npm install && npm run setup:codespaces",
+  "postStartCommand": "npm run dev:codespaces",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-json",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint"
+      ],
+      "settings": {
+        "typescript.preferences.preferTypeOnlyAutoImports": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteUser": "node",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+}
