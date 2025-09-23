@@ -8,6 +8,7 @@ on:
 # GitHub Pages deployment - independent of Vercel
 # This workflow creates a static export for GitHub Pages hosting
 # Repository: TeamPaintbrush/thejerktracker (MAIN)
+# Last updated: September 22, 2025
 
 permissions:
   contents: read
