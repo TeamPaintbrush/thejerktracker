@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
-// Updated for Vercel deployment - QR code functionality enabled
+// Dual deployment configuration:
+// - Vercel: Full-featured app with database and API routes
+// - GitHub Pages: Static export for showcase (when GITHUB_ACTIONS=true)
 const nextConfig = {
   trailingSlash: true,
   reactStrictMode: true,

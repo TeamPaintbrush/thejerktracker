@@ -7,6 +7,7 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build --turbopack",
     "build:vercel": "prisma generate && prisma db push && npm run db:seed && next build --turbopack",
+    "build:vercel:test": "cross-env VERCEL=1 npm run build:vercel",
     "build:github": "npm run validate:build && npm run build:github:setup && cross-env GITHUB_ACTIONS=true next build",
     "build:github:setup": "node scripts/db-check.js && echo 'Database check complete'",
     "validate:build": "node scripts/validate-build.js",
@@ -26,7 +27,8 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:check": "node scripts/db-check.js",
-    "setup:db": "node scripts/setup-db.js"
+    "setup:db": "node scripts/setup-db.js",
+    "verify:vercel": "node scripts/verify-vercel.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
