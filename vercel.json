@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build:vercel",
+  "public": true,
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "false"
   },
@@ -8,5 +9,16 @@
     "pages/api/**/*.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow"
+        }
+      ]
+    }
+  ]
 }
