@@ -7,11 +7,13 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build --turbopack",
     "build:vercel": "prisma generate && prisma db push && npm run db:seed && next build --turbopack",
-    "build:github": "cross-env GITHUB_ACTIONS=true next build",
+    "build:github": "npm run validate:build && npm run build:github:setup && cross-env GITHUB_ACTIONS=true next build",
+    "build:github:setup": "node scripts/db-check.js && echo 'Database check complete'",
+    "validate:build": "node scripts/validate-build.js",
     "export": "next export",
     "build:static": "next build",
     "start": "next start",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate || echo 'Prisma generate failed during install'",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
@@ -22,7 +24,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:check": "node scripts/db-check.js",
+    "setup:db": "node scripts/setup-db.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
