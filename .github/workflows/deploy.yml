@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CI: true
+      GITHUB_ACTIONS: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +38,9 @@ jobs:
         run: |
           echo "Running pre-build validation..."
           node scripts/validate-build.js
+        env:
+          CI: true
+          GITHUB_ACTIONS: true
           
       - name: Setup environment for static build
         run: |
@@ -52,6 +58,9 @@ jobs:
         run: |
           echo "Running database connectivity check..."
           node scripts/db-check.js || echo "Database check completed with warnings"
+        env:
+          CI: true
+          GITHUB_ACTIONS: true
         
       - name: Build Next.js app
         run: npm run build:github

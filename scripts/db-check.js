@@ -8,6 +8,8 @@ async function main() {
   // Check environment
   if (process.env.GITHUB_ACTIONS || process.env.CI) {
     console.log('🏗️  CI/CD environment detected');
+    console.log(`   - GITHUB_ACTIONS: ${process.env.GITHUB_ACTIONS || 'not set'}`);
+    console.log(`   - CI: ${process.env.CI || 'not set'}`);
     console.log('✅ Using static build mode - skipping database connection test');
     console.log('✅ Database check completed successfully');
     return;
