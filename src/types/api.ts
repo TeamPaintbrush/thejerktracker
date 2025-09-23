@@ -1,4 +1,88 @@
-import { Order, OrderItem, Restaurant, User, OrderStatus, OrderType, UserRole } from '@prisma/client'
+// Base type definitions
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CUSTOMER = 'CUSTOMER'
+}
+
+export enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  PREPARING = 'PREPARING',
+  READY = 'READY',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED'
+}
+
+export enum OrderType {
+  DINE_IN = 'DINE_IN',
+  TAKEOUT = 'TAKEOUT',
+  DELIVERY = 'DELIVERY'
+}
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  password: string
+  role: UserRole
+  restaurantId?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface UserCreateData {
+  email: string
+  name: string
+  password: string
+  role: UserRole
+  restaurantId?: string | null
+}
+
+export interface Restaurant {
+  id: string
+  name: string
+  email: string
+  phone?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zipCode?: string | null
+  website?: string | null
+  description?: string | null
+  logoUrl?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Order {
+  id: string
+  orderNumber: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string | null
+  totalAmount: number
+  status: OrderStatus
+  orderType: OrderType
+  notes?: string | null
+  specialRequests?: string | null
+  deliveryAddress?: string | null
+  estimatedTime?: string | null
+  actualTime?: string | null
+  restaurantId: string
+  createdById?: string | null
+  updatedById?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface OrderItem {
+  id: string
+  name: string
+  quantity: number
+  price: number
+  notes?: string | null
+  orderId: string
+}
 
 // API Response types
 export interface ApiResponse<T = unknown> {

@@ -1,5 +1,9 @@
-import { UserRole } from '@prisma/client'
 import NextAuth from 'next-auth'
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CUSTOMER = 'CUSTOMER'
+}
 
 declare module 'next-auth' {
   interface Session {

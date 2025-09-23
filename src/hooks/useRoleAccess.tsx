@@ -1,5 +1,5 @@
 import { useSession } from 'next-auth/react'
-import { UserRole } from '@prisma/client'
+import { UserRole } from '@/types/api'
 import { ReactNode } from 'react'
 
 /**
@@ -15,17 +15,15 @@ export function useRoleAccess() {
     return roles.includes(session.user.role)
   }
 
-  const isAdmin = (): boolean => hasRole('ADMIN')
-  const isStaff = (): boolean => hasRole('STAFF') 
-  const isDriver = (): boolean => hasRole('DRIVER')
-  const isStaffOrAdmin = (): boolean => hasRole(['STAFF', 'ADMIN'])
+  const isAdmin = (): boolean => hasRole(UserRole.ADMIN)
+  const isCustomer = (): boolean => hasRole(UserRole.CUSTOMER)
+  const isStaffOrAdmin = (): boolean => hasRole([UserRole.ADMIN])
 
   return {
     user: session?.user,
     hasRole,
     isAdmin,
-    isStaff,
-    isDriver,
+    isCustomer,
     isStaffOrAdmin,
     isAuthenticated: !!session
   }

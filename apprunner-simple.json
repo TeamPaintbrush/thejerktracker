@@ -1,0 +1,17 @@
+{
+  "ServiceName": "thejerktracker-prod",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "public.ecr.aws/docker/library/node:18-alpine",
+      "ImageConfiguration": {
+        "Port": "3000"
+      },
+      "ImageRepositoryType": "ECR_PUBLIC"
+    },
+    "AutoDeploymentsEnabled": false
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1024",
+    "Memory": "2048"
+  }
+}

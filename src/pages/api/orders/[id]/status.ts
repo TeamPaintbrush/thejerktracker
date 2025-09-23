@@ -1,7 +1,23 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
+import { OrderService } from '@/lib/dynamoService'
+import { requireStaffOrAdmin } from '@/lib/auth'
+import { 
+  asyncHandler, 
+  ValidationError, 
+  NotFoundError,
+  validateAndThrow 
+} from '@/lib/errors'
+import { z } from 'zod'
+import { OrderStatus } from '@/types/api'
 
-export default async function handler(
+const updateStatusSchema = z.object({
+  status: z.nativeEnum(OrderStatus),
+  updatedById: z.string().uuid().optional(),
+  estimatedTime: z.string().datetime().optional(),
+  actualTime: z.string().datetime().optional(),
+})
+
+export default asyncHandler(async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -11,69 +27,49 @@ export default async function handler(
   }
 
   const { id } = req.query
-  const { status, updatedById, estimatedTime, actualTime } = req.body
 
   if (!id || typeof id !== 'string') {
-    return res.status(400).json({ error: 'Invalid order ID' })
+    throw new ValidationError('Invalid order ID')
   }
 
-  if (!status) {
-    return res.status(400).json({ error: 'Status is required' })
+  // Require authentication
+  const authenticatedReq = await requireStaffOrAdmin(req, res)
+  if (!authenticatedReq) return
+
+  // Validate request body
+  const validatedData = validateAndThrow(updateStatusSchema, req.body)
+
+  // Verify order exists
+  const existingOrder = await OrderService.findById(id)
+
+  if (!existingOrder) {
+    throw new NotFoundError('Order not found')
   }
 
-  const validStatuses = ['PENDING', 'IN_PROGRESS', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED']
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ 
-      error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
-    })
+  // Check restaurant access (non-admin users can only update their restaurant's orders)
+  if (authenticatedReq.user.role !== 'ADMIN' && 
+      existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
+    return res.status(403).json({ error: 'Access denied. You can only update orders from your restaurant.' })
   }
 
-  try {
-    // Verify order exists
-    const existingOrder = await prisma.order.findUnique({
-      where: { id }
-    })
-
-    if (!existingOrder) {
-      return res.status(404).json({ error: 'Order not found' })
-    }
-
-    // Prepare update data
-    const updateData: any = {
-      status,
-      updatedById
-    }
-
-    // Set actual time when order is delivered
-    if (status === 'DELIVERED' && !existingOrder.actualTime) {
-      updateData.actualTime = actualTime ? new Date(actualTime) : new Date()
-    }
-
-    // Set estimated time if provided
-    if (estimatedTime) {
-      updateData.estimatedTime = new Date(estimatedTime)
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: updateData,
-      include: {
-        items: true,
-        restaurant: {
-          select: { id: true, name: true }
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true }
-        },
-        updatedBy: {
-          select: { id: true, name: true, email: true }
-        }
-      }
-    })
-
-    return res.status(200).json(updatedOrder)
-  } catch (error) {
-    console.error('Error updating order status:', error)
-    return res.status(500).json({ error: 'Failed to update order status' })
+  // Prepare update data
+  const updateData: any = {
+    status: validatedData.status,
+    updatedBy: validatedData.updatedById || authenticatedReq.user.id,
+    updatedAt: new Date().toISOString()
   }
-}
+
+  // Set actual time when order is delivered/completed
+  if (validatedData.status === OrderStatus.DELIVERED && !existingOrder.actualTime) {
+    updateData.actualTime = validatedData.actualTime || new Date().toISOString()
+  }
+
+  // Set estimated time if provided
+  if (validatedData.estimatedTime) {
+    updateData.estimatedTime = validatedData.estimatedTime
+  }
+
+  const updatedOrder = await OrderService.update(id, updateData)
+
+  return res.status(200).json(updatedOrder)
+})

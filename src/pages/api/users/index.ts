@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
+import { UserService, RestaurantService } from '@/lib/dynamoService'
 import { requireAdmin, requireAuth } from '@/lib/auth'
 import { createUserSchema } from '@/lib/validation'
 import { z } from 'zod'
@@ -11,11 +11,12 @@ import {
   NotFoundError,
   validateAndThrow 
 } from '@/lib/errors'
+import { UserRole } from '@/types/api'
 
 // Query schema for user listing
 const usersQuerySchema = z.object({
   restaurantId: z.string().uuid('Invalid restaurant ID').optional(),
-  role: z.enum(['USER', 'STAFF', 'ADMIN']).optional(),
+  role: z.enum(['CUSTOMER', 'ADMIN']).optional(),
   search: z.string().max(200, 'Search term must be less than 200 characters').optional(),
 })
 
@@ -42,7 +43,7 @@ async function handleGetUsers(req: NextApiRequest, res: NextApiResponse) {
   // Validate query parameters
   const queryData = validateAndThrow<{
     restaurantId?: string
-    role?: 'USER' | 'STAFF' | 'ADMIN'
+    role?: 'CUSTOMER' | 'ADMIN'
     search?: string
   }>(
     usersQuerySchema, 
@@ -53,53 +54,68 @@ async function handleGetUsers(req: NextApiRequest, res: NextApiResponse) {
   const { restaurantId, role, search } = queryData
 
   try {
-    // Build where clause based on user role
-    let where: any = {}
+    // Get all users
+    const allUsers = await UserService.getAll()
 
-    if (authenticatedReq.user.role === 'ADMIN') {
-      // Admins can see all users, with optional filtering
-      if (restaurantId) {
-        where.restaurantId = restaurantId
-      }
-    } else {
+    // Filter based on user role and permissions
+    let filteredUsers = allUsers
+
+    if (authenticatedReq.user.role !== 'ADMIN') {
       // Non-admin users can only see users from their restaurant
-      where.restaurantId = authenticatedReq.user.restaurantId
+      filteredUsers = allUsers.filter(user => 
+        user.restaurantId === authenticatedReq.user.restaurantId
+      )
+    } else if (restaurantId) {
+      // Admins can filter by restaurant
+      filteredUsers = allUsers.filter(user => 
+        user.restaurantId === restaurantId
+      )
     }
 
     // Apply role filter
     if (role) {
-      where.role = role
+      filteredUsers = filteredUsers.filter(user => user.role === role)
     }
 
     // Apply search filter
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-      ]
+      const searchLower = search.toLowerCase()
+      filteredUsers = filteredUsers.filter(user =>
+        user.name.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower)
+      )
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        restaurantId: true,
-        restaurant: {
-          select: {
-            id: true,
-            name: true,
-          }
-        },
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    // Get restaurant data for users
+    const usersWithRestaurants = await Promise.all(
+      filteredUsers.map(async (user) => {
+        let restaurant = null
+        if (user.restaurantId) {
+          restaurant = await RestaurantService.findById(user.restaurantId)
+        }
+        
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          restaurantId: user.restaurantId,
+          restaurant: restaurant ? {
+            id: restaurant.id,
+            name: restaurant.name,
+          } : null,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        }
+      })
+    )
 
-    return res.status(200).json({ users })
+    // Sort by creation date (newest first)
+    usersWithRestaurants.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    return res.status(200).json({ users: usersWithRestaurants })
   } catch (error) {
     throw error // Let asyncHandler handle it
   }
@@ -115,16 +131,14 @@ async function handleCreateUser(req: NextApiRequest, res: NextApiResponse) {
     email: string
     password: string
     name: string
-    role?: 'USER' | 'STAFF' | 'ADMIN'
+    role?: 'CUSTOMER' | 'ADMIN'
     restaurantId?: string
   }>(createUserSchema, req.body, 'Validation failed')
 
-  const { email, password, name, role = 'USER', restaurantId } = userData
+  const { email, password, name, role = 'CUSTOMER', restaurantId } = userData
 
   // Check if user already exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email }
-  })
+  const existingUser = await UserService.findByEmail(email)
 
   if (existingUser) {
     throw new ConflictError('User with this email already exists')
@@ -132,9 +146,7 @@ async function handleCreateUser(req: NextApiRequest, res: NextApiResponse) {
 
   // Validate restaurant exists if provided
   if (restaurantId) {
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId }
-    })
+    const restaurant = await RestaurantService.findById(restaurantId)
     
     if (!restaurant) {
       throw new NotFoundError('Restaurant')
@@ -144,37 +156,34 @@ async function handleCreateUser(req: NextApiRequest, res: NextApiResponse) {
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 12)
 
-  // Create user data object
-  const createData: any = {
+  // Create user
+  const newUser = await UserService.create({
     email,
-    password: hashedPassword,
+    password, // UserService will hash it
     name,
-    role,
-  }
-
-  // Only include restaurantId if it's provided
-  if (restaurantId) {
-    createData.restaurantId = restaurantId
-  }
-
-  const newUser = await prisma.user.create({
-    data: createData,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      restaurantId: true,
-      restaurant: {
-        select: {
-          id: true,
-          name: true,
-        }
-      },
-      createdAt: true,
-      updatedAt: true,
-    }
+    role: role as UserRole,
+    restaurantId: restaurantId || null,
   })
 
-  return res.status(201).json(newUser)
+  // Get restaurant data if user has one
+  let restaurant = null
+  if (newUser.restaurantId) {
+    restaurant = await RestaurantService.findById(String(newUser.restaurantId))
+  }
+
+  const response = {
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    role: newUser.role,
+    restaurantId: newUser.restaurantId,
+    restaurant: restaurant ? {
+      id: restaurant.id,
+      name: restaurant.name,
+    } : null,
+    createdAt: newUser.createdAt,
+    updatedAt: newUser.updatedAt,
+  }
+
+  return res.status(201).json(response)
 }

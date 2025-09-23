@@ -8,7 +8,8 @@
 ### 📊 **Deployment Details**
 - **Platform**: AWS S3 Static Website Hosting
 - **Region**: us-east-1 (N. Virginia)
-- **Status**: ✅ LIVE AND RUNNING
+- **Status**: ✅ LIVE AND RUNNING (Recently Redeployed)
+- **Last Deployment**: September 23, 2025
 - **Cost**: ~$0.03/day (pay-as-you-go)
 - **Load Time**: ~1-2 seconds globally
 

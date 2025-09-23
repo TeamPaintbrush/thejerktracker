@@ -1,7 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
+import { RestaurantService, UserService, OrderService } from '@/lib/dynamoService'
+import { requireAuth, requireAdmin } from '@/lib/auth'
+import { updateRestaurantSchema } from '@/lib/validation'
+import { 
+  asyncHandler, 
+  ValidationError, 
+  ConflictError, 
+  NotFoundError,
+  validateAndThrow 
+} from '@/lib/errors'
+import { Restaurant } from '@/types/api'
 
-export default async function handler(
+export default asyncHandler(async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
@@ -11,170 +21,153 @@ export default async function handler(
     return res.status(400).json({ error: 'Invalid restaurant ID' })
   }
 
-  try {
-    switch (req.method) {
-      case 'GET':
-        return handleGetRestaurant(id, res)
-      case 'PUT':
-        return handleUpdateRestaurant(id, req, res)
-      case 'DELETE':
-        return handleDeleteRestaurant(id, res)
-      default:
-        res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
-        return res.status(405).json({ error: 'Method not allowed' })
-    }
-  } catch (error) {
-    console.error('Restaurant API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+  switch (req.method) {
+    case 'GET':
+      return handleGetRestaurant(id, res)
+    case 'PUT':
+      return handleUpdateRestaurant(id, req, res)
+    case 'DELETE':
+      return handleDeleteRestaurant(id, res)
+    default:
+      res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
+      return res.status(405).json({ error: 'Method not allowed' })
   }
-}
+})
 
 async function handleGetRestaurant(id: string, res: NextApiResponse) {
-  try {
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id },
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true
-          }
-        },
-        orders: {
-          select: {
-            id: true,
-            orderNumber: true,
-            customerName: true,
-            status: true,
-            totalAmount: true,
-            createdAt: true
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 10 // Latest 10 orders
-        },
-        _count: {
-          select: {
-            orders: true,
-            users: true
-          }
-        }
-      }
-    })
-
-    if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' })
-    }
-
-    return res.status(200).json(restaurant)
-  } catch (error) {
-    console.error('Error fetching restaurant:', error)
-    return res.status(500).json({ error: 'Failed to fetch restaurant' })
+  const restaurant = await RestaurantService.findById(id)
+  
+  if (!restaurant) {
+    throw new NotFoundError('Restaurant')
   }
+
+  // Get users for this restaurant
+  const allUsers = await UserService.getAll()
+  const restaurantUsers = allUsers
+    .filter(user => user.restaurantId === restaurant.id)
+    .map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt
+    }))
+
+  // Get orders for this restaurant (latest 10)
+  const allOrders = await OrderService.getByRestaurant(restaurant.id)
+  const latestOrders = allOrders
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10)
+    .map(order => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      createdAt: order.createdAt
+    }))
+
+  const response = {
+    ...restaurant,
+    users: restaurantUsers,
+    orders: latestOrders,
+    _count: {
+      orders: allOrders.length,
+      users: restaurantUsers.length
+    }
+  }
+
+  return res.status(200).json(response)
 }
 
 async function handleUpdateRestaurant(id: string, req: NextApiRequest, res: NextApiResponse) {
-  const {
-    name,
-    email,
-    phone,
-    address,
-    city,
-    state,
-    zipCode,
-    website,
-    description,
-    logoUrl
-  } = req.body
+  const authenticatedReq = await requireAuth(req, res)
+  if (!authenticatedReq) return
 
-  try {
-    // Verify restaurant exists
-    const existingRestaurant = await prisma.restaurant.findUnique({
-      where: { id }
-    })
+  // Only admins can update restaurants, or restaurant owners can update their own
+  const isAdmin = authenticatedReq.user.role === 'ADMIN'
+  const isOwnRestaurant = authenticatedReq.user.restaurantId === id
 
-    if (!existingRestaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' })
-    }
-
-    // If email is being changed, check it's not taken
-    if (email && email !== existingRestaurant.email) {
-      const emailExists = await prisma.restaurant.findUnique({
-        where: { email }
-      })
-
-      if (emailExists) {
-        return res.status(409).json({ error: 'Email already in use by another restaurant' })
-      }
-    }
-
-    // Prepare update data
-    const updateData: any = {}
-    if (name) updateData.name = name
-    if (email) updateData.email = email
-    if (phone !== undefined) updateData.phone = phone
-    if (address !== undefined) updateData.address = address
-    if (city !== undefined) updateData.city = city
-    if (state !== undefined) updateData.state = state
-    if (zipCode !== undefined) updateData.zipCode = zipCode
-    if (website !== undefined) updateData.website = website
-    if (description !== undefined) updateData.description = description
-    if (logoUrl !== undefined) updateData.logoUrl = logoUrl
-
-    const updatedRestaurant = await prisma.restaurant.update({
-      where: { id },
-      data: updateData
-    })
-
-    return res.status(200).json(updatedRestaurant)
-  } catch (error) {
-    console.error('Error updating restaurant:', error)
-    return res.status(500).json({ error: 'Failed to update restaurant' })
+  if (!isAdmin && !isOwnRestaurant) {
+    return res.status(403).json({ error: 'Access denied' })
   }
+
+  // Validate request body
+  const restaurantData = validateAndThrow<{
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    website?: string
+    description?: string
+    logoUrl?: string
+  }>(updateRestaurantSchema, req.body, 'Validation failed')
+
+  // Verify restaurant exists
+  const existingRestaurant = await RestaurantService.findById(id)
+  if (!existingRestaurant) {
+    throw new NotFoundError('Restaurant')
+  }
+
+  // If email is being changed, check it's not taken
+  if (restaurantData.email && restaurantData.email !== existingRestaurant.email) {
+    const emailExists = await RestaurantService.findByEmail(restaurantData.email)
+    if (emailExists) {
+      throw new ConflictError('Email already in use by another restaurant')
+    }
+  }
+
+  // Prepare update data - only include fields that were provided
+  const updateData: Partial<Restaurant> = {}
+  Object.keys(restaurantData).forEach(key => {
+    const value = restaurantData[key as keyof typeof restaurantData]
+    if (value !== undefined) {
+      updateData[key as keyof Restaurant] = value as any
+    }
+  })
+
+  const updatedRestaurant = await RestaurantService.update(id, updateData) as Restaurant
+
+  if (!updatedRestaurant) {
+    throw new Error('Failed to update restaurant')
+  }
+
+  return res.status(200).json(updatedRestaurant)
 }
 
 async function handleDeleteRestaurant(id: string, res: NextApiResponse) {
-  try {
-    // Verify restaurant exists
-    const existingRestaurant = await prisma.restaurant.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            orders: true,
-            users: true
-          }
-        }
-      }
-    })
+  // Only admins can delete restaurants
+  const authenticatedReq = await requireAdmin({ method: 'DELETE' } as NextApiRequest, res)
+  if (!authenticatedReq) return
 
-    if (!existingRestaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' })
-    }
-
-    // Check if restaurant has orders or users
-    if (existingRestaurant._count.orders > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete restaurant with existing orders. Please archive instead.' 
-      })
-    }
-
-    if (existingRestaurant._count.users > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete restaurant with existing users. Please remove users first.' 
-      })
-    }
-
-    // Delete restaurant
-    await prisma.restaurant.delete({
-      where: { id }
-    })
-
-    return res.status(200).json({ message: 'Restaurant deleted successfully' })
-  } catch (error) {
-    console.error('Error deleting restaurant:', error)
-    return res.status(500).json({ error: 'Failed to delete restaurant' })
+  // Verify restaurant exists
+  const existingRestaurant = await RestaurantService.findById(id)
+  if (!existingRestaurant) {
+    throw new NotFoundError('Restaurant')
   }
+
+  // Check if restaurant has orders or users
+  const orders = await OrderService.getByRestaurant(id)
+  const allUsers = await UserService.getAll()
+  const restaurantUsers = allUsers.filter(user => user.restaurantId === id)
+
+  if (orders.length > 0) {
+    return res.status(400).json({ 
+      error: 'Cannot delete restaurant with existing orders. Please archive instead.' 
+    })
+  }
+
+  if (restaurantUsers.length > 0) {
+    return res.status(400).json({ 
+      error: 'Cannot delete restaurant with existing users. Please remove users first.' 
+    })
+  }
+
+  // Delete restaurant
+  await RestaurantService.delete(id)
+
+  return res.status(200).json({ message: 'Restaurant deleted successfully' })
 }

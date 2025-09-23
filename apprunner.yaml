@@ -5,8 +5,6 @@ build:
     build:
       - echo "Installing dependencies..."
       - npm install
-      - echo "Generating Prisma client..."
-      - npx prisma generate
       - echo "Building Next.js application..."
       - npm run build
 run:
@@ -15,9 +13,13 @@ run:
   network:
     port: 3000
   env:
-    - name: DATABASE_URL
-      value: postgresql://postgres:TheJERK2025!@thejerktracker-prod.cm9q2ac2m6kl.us-east-1.rds.amazonaws.com:5432/thejerktracker?schema=public
+    - name: NODE_ENV
+      value: production
     - name: NEXTAUTH_SECRET
       value: thejerk-super-secret-production-key-2025-change-me
+    - name: AWS_REGION
+      value: us-east-1
+    - name: DYNAMODB_ENDPOINT
+      value: https://dynamodb.us-east-1.amazonaws.com
     - name: NODE_ENV
       value: production

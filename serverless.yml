@@ -1,0 +1,28 @@
+service: thejerktracker-serverless
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    DATABASE_URL: postgresql://postgres:TheJERK2025!@thejerktracker-prod.cm9q2ac2m6kl.us-east-1.rds.amazonaws.com:5432/thejerktracker?schema=public
+    NEXTAUTH_SECRET: thejerk-super-secret-production-key-2025-change-me
+    NODE_ENV: production
+
+plugins:
+  - serverless-nextjs-plugin
+
+custom:
+  nextjs:
+    dir: ./
+
+functions:
+  nextjs:
+    handler: index.handler
+    events:
+      - http:
+          path: /{any+}
+          method: ANY
+      - http:
+          path: /
+          method: ANY

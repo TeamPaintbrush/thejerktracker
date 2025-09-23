@@ -1,13 +1,13 @@
-import NextAuth from 'next-auth'
+import NextAuth, { SessionStrategy } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
+import type { Session } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import { prisma } from '@/lib/prisma'
+import { UserService, RestaurantService } from '@/lib/dynamoService'
 import bcrypt from 'bcryptjs'
 import { config } from '@/lib/config'
-import { UserRole } from '@prisma/client'
+import { UserRole } from '@/types/api'
 
-export default NextAuth({
-  adapter: PrismaAdapter(prisma),
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -22,20 +22,7 @@ export default NextAuth({
 
         try {
           // Find user in database
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email
-            },
-            include: {
-              restaurant: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          })
+          const user = await UserService.findByEmail(credentials.email)
 
           if (!user) {
             console.log('User not found:', credentials.email)
@@ -49,15 +36,25 @@ export default NextAuth({
             return null
           }
 
+          // Get restaurant info if user has one
+          let restaurant = null
+          if (user.restaurantId) {
+            restaurant = await RestaurantService.findById(user.restaurantId)
+          }
+
           // Return user data for session
           return {
             id: user.id,
             email: user.email,
             name: user.name,
             role: user.role,
-            restaurantId: user.restaurantId,
-            restaurant: user.restaurant
-          }
+            restaurantId: user.restaurantId || undefined,
+            restaurant: restaurant ? {
+              id: restaurant.id,
+              name: restaurant.name,
+              email: restaurant.email
+            } : undefined
+          } as any
         } catch (error) {
           console.error('Auth error:', error)
           return null
@@ -66,10 +63,10 @@ export default NextAuth({
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt' as SessionStrategy
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: JWT; user: any }) {
       // Include user info in JWT token
       if (user) {
         token.role = user.role
@@ -78,7 +75,7 @@ export default NextAuth({
       }
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       // Send properties to the client
       if (token?.sub && session.user) {
         session.user.id = token.sub
@@ -93,4 +90,6 @@ export default NextAuth({
     signIn: '/auth/signin'
   },
   secret: config.NEXTAUTH_SECRET
-})
+}
+
+export default NextAuth(authOptions)

@@ -1,72 +1,66 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
-import { requireStaffOrAdmin, requireSameRestaurant } from '@/lib/auth'
+import { OrderService, RestaurantService, UserService } from '@/lib/dynamoService'
+import { requireStaffOrAdmin } from '@/lib/auth'
+import { updateOrderSchema } from '@/lib/validation'
+import { 
+  asyncHandler, 
+  ValidationError, 
+  NotFoundError,
+  validateAndThrow 
+} from '@/lib/errors'
+import { z } from 'zod'
 
-export default async function handler(
+// Extended update schema for this API
+const updateOrderWithItemsSchema = updateOrderSchema.extend({
+  items: z.array(z.object({
+    name: z.string().min(1, 'Item name is required').max(200, 'Item name must be less than 200 characters'),
+    quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+    price: z.number().min(0, 'Price must be non-negative'),
+    notes: z.string().max(200, 'Item notes must be less than 200 characters').optional(),
+  })).optional(),
+})
+
+export default asyncHandler(async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   const { id } = req.query
 
   if (!id || typeof id !== 'string') {
-    return res.status(400).json({ error: 'Invalid order ID' })
+    throw new ValidationError('Invalid order ID')
   }
 
-  try {
-    switch (req.method) {
-      case 'GET':
-        return handleGetOrder(id, req, res)
-      case 'PUT':
-        return handleUpdateOrder(id, req, res)
-      case 'DELETE':
-        return handleDeleteOrder(id, req, res)
-      default:
-        res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
-        return res.status(405).json({ error: 'Method not allowed' })
-    }
-  } catch (error) {
-    console.error('Order API error:', error)
-    return res.status(500).json({ error: 'Internal server error' })
+  switch (req.method) {
+    case 'GET':
+      return handleGetOrder(id, req, res)
+    case 'PUT':
+      return handleUpdateOrder(id, req, res)
+    case 'DELETE':
+      return handleDeleteOrder(id, req, res)
+    default:
+      res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
+      return res.status(405).json({ error: 'Method not allowed' })
   }
-}
+})
 
 async function handleGetOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
   // Require authentication
   const authenticatedReq = await requireStaffOrAdmin(req, res)
   if (!authenticatedReq) return
 
-  try {
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        restaurant: {
-          select: { id: true, name: true, phone: true, address: true }
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true }
-        },
-        updatedBy: {
-          select: { id: true, name: true, email: true }
-        }
-      }
-    })
+  const order = await OrderService.findById(id)
 
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' })
-    }
-
-    // Check restaurant access (non-admin users can only access their restaurant's orders)
-    if (authenticatedReq.user.role !== 'ADMIN' && 
-        order.restaurantId !== authenticatedReq.user.restaurantId) {
-      return res.status(403).json({ error: 'Access denied. You can only access orders from your restaurant.' })
-    }
-
-    return res.status(200).json(order)
-  } catch (error) {
-    console.error('Error fetching order:', error)
-    return res.status(500).json({ error: 'Failed to fetch order' })
+  if (!order) {
+    throw new NotFoundError('Order not found')
   }
+
+  // Check restaurant access (non-admin users can only access their restaurant's orders)
+  if (authenticatedReq.user.role !== 'ADMIN' && 
+      order.restaurantId !== authenticatedReq.user.restaurantId) {
+    return res.status(403).json({ error: 'Access denied. You can only access orders from your restaurant.' })
+  }
+
+  return res.status(200).json(order)
 }
 
 async function handleUpdateOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
@@ -74,106 +68,36 @@ async function handleUpdateOrder(id: string, req: NextApiRequest, res: NextApiRe
   const authenticatedReq = await requireStaffOrAdmin(req, res)
   if (!authenticatedReq) return
 
-  const {
-    customerName,
-    customerPhone,
-    customerEmail,
-    totalAmount,
-    status,
-    orderType,
-    notes,
-    specialRequests,
-    deliveryAddress,
-    estimatedTime,
-    actualTime,
-    items,
-    updatedById
-  } = req.body
+  // Validate request body
+  const validatedData = validateAndThrow(updateOrderWithItemsSchema, req.body)
 
-  try {
-    // Verify order exists
-    const existingOrder = await prisma.order.findUnique({
-      where: { id },
-      include: { items: true }
-    })
+  // Verify order exists
+  const existingOrder = await OrderService.findById(id)
 
-    if (!existingOrder) {
-      return res.status(404).json({ error: 'Order not found' })
-    }
-
-    // Check restaurant access (non-admin users can only update their restaurant's orders)
-    if (authenticatedReq.user.role !== 'ADMIN' && 
-        existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
-      return res.status(403).json({ error: 'Access denied. You can only update orders from your restaurant.' })
-    }
-
-    // Prepare update data
-    const updateData: any = {
-      updatedById: authenticatedReq.user.id
-    }
-
-    if (customerName) updateData.customerName = customerName
-    if (customerPhone) updateData.customerPhone = customerPhone
-    if (customerEmail !== undefined) updateData.customerEmail = customerEmail
-    if (totalAmount) updateData.totalAmount = parseFloat(totalAmount)
-    if (status) updateData.status = status
-    if (orderType) updateData.orderType = orderType
-    if (notes !== undefined) updateData.notes = notes
-    if (specialRequests !== undefined) updateData.specialRequests = specialRequests
-    if (deliveryAddress !== undefined) updateData.deliveryAddress = deliveryAddress
-    if (estimatedTime) updateData.estimatedTime = new Date(estimatedTime)
-    if (actualTime) updateData.actualTime = new Date(actualTime)
-
-    // Update order in transaction
-    const updatedOrder = await prisma.$transaction(async (tx) => {
-      // Update order
-      const order = await tx.order.update({
-        where: { id },
-        data: updateData
-      })
-
-      // Update items if provided
-      if (items && Array.isArray(items)) {
-        // Delete existing items
-        await tx.orderItem.deleteMany({
-          where: { orderId: id }
-        })
-
-        // Create new items
-        await tx.orderItem.createMany({
-          data: items.map((item: any) => ({
-            orderId: id,
-            name: item.name,
-            quantity: parseInt(item.quantity, 10),
-            price: parseFloat(item.price),
-            notes: item.notes
-          }))
-        })
-      }
-
-      // Return updated order with items
-      return tx.order.findUnique({
-        where: { id },
-        include: {
-          items: true,
-          restaurant: {
-            select: { id: true, name: true }
-          },
-          createdBy: {
-            select: { id: true, name: true, email: true }
-          },
-          updatedBy: {
-            select: { id: true, name: true, email: true }
-          }
-        }
-      })
-    })
-
-    return res.status(200).json(updatedOrder)
-  } catch (error) {
-    console.error('Error updating order:', error)
-    return res.status(500).json({ error: 'Failed to update order' })
+  if (!existingOrder) {
+    throw new NotFoundError('Order not found')
   }
+
+  // Check restaurant access (non-admin users can only update their restaurant's orders)
+  if (authenticatedReq.user.role !== 'ADMIN' && 
+      existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
+    return res.status(403).json({ error: 'Access denied. You can only update orders from your restaurant.' })
+  }
+
+  // Prepare update data
+  const updateData: any = {
+    ...validatedData,
+    updatedBy: authenticatedReq.user.id,
+    updatedAt: new Date().toISOString()
+  }
+
+  // Remove items from updateData as they're handled separately in DynamoDB
+  const { items, ...orderUpdateData } = updateData
+
+  // Update order
+  const updatedOrder = await OrderService.update(id, orderUpdateData)
+
+  return res.status(200).json(updatedOrder)
 }
 
 async function handleDeleteOrder(id: string, req: NextApiRequest, res: NextApiResponse) {
@@ -181,30 +105,21 @@ async function handleDeleteOrder(id: string, req: NextApiRequest, res: NextApiRe
   const authenticatedReq = await requireStaffOrAdmin(req, res)
   if (!authenticatedReq) return
 
-  try {
-    // Verify order exists
-    const existingOrder = await prisma.order.findUnique({
-      where: { id }
-    })
+  // Verify order exists
+  const existingOrder = await OrderService.findById(id)
 
-    if (!existingOrder) {
-      return res.status(404).json({ error: 'Order not found' })
-    }
-
-    // Check restaurant access (non-admin users can only delete their restaurant's orders)
-    if (authenticatedReq.user.role !== 'ADMIN' && 
-        existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
-      return res.status(403).json({ error: 'Access denied. You can only delete orders from your restaurant.' })
-    }
-
-    // Delete order (items will be deleted due to cascade)
-    await prisma.order.delete({
-      where: { id }
-    })
-
-    return res.status(200).json({ message: 'Order deleted successfully' })
-  } catch (error) {
-    console.error('Error deleting order:', error)
-    return res.status(500).json({ error: 'Failed to delete order' })
+  if (!existingOrder) {
+    throw new NotFoundError('Order not found')
   }
+
+  // Check restaurant access (non-admin users can only delete their restaurant's orders)
+  if (authenticatedReq.user.role !== 'ADMIN' && 
+      existingOrder.restaurantId !== authenticatedReq.user.restaurantId) {
+    return res.status(403).json({ error: 'Access denied. You can only delete orders from your restaurant.' })
+  }
+
+  // Delete order
+  await OrderService.delete(id)
+
+  return res.status(200).json({ message: 'Order deleted successfully' })
 }

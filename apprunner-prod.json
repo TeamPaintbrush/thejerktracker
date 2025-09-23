@@ -1,0 +1,23 @@
+{
+  "ServiceName": "thejerktracker-prod",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "public.ecr.aws/docker/library/node:18-alpine",
+      "ImageConfiguration": {
+        "Port": "3000",
+        "RuntimeEnvironmentVariables": {
+          "DATABASE_URL": "postgresql://postgres:TheJERK2025!@thejerktracker-prod.cm9q2ac2m6kl.us-east-1.rds.amazonaws.com:5432/thejerktracker?schema=public",
+          "NEXTAUTH_SECRET": "thejerk-super-secret-production-key-2025-change-me",
+          "NEXTAUTH_URL": "https://PLACEHOLDER_URL",
+          "NODE_ENV": "production"
+        }
+      },
+      "ImageRepositoryType": "ECR_PUBLIC"
+    },
+    "AutoDeploymentsEnabled": false
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1024",
+    "Memory": "2048"
+  }
+}

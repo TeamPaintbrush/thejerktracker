@@ -1,17 +1,39 @@
 {
-  "ServiceName": "thejerktracker-prod",
+  "ServiceName": "thejerktracker-app",
   "SourceConfiguration": {
     "AutoDeploymentsEnabled": true,
     "CodeRepository": {
-      "RepositoryUrl": "https://github.com/TeamPaintbrush/thejerktracker",
+      "RepositoryUrl": "https://github.com/TeamPaintbrush/pre-work-appx",
       "SourceCodeVersion": {
         "Type": "BRANCH",
         "Value": "main"
       },
-      "SourceDirectory": "thejerktracker",
       "CodeConfiguration": {
-        "ConfigurationSource": "REPOSITORY"
+        "ConfigurationSource": "REPOSITORY",
+        "CodeConfigurationValues": {
+          "Runtime": "NODEJS_18",
+          "BuildCommand": "npm install && npm run build",
+          "StartCommand": "npm start",
+          "Port": "3000",
+          "RuntimeEnvironmentVariables": [
+            {
+              "Name": "NODE_ENV",
+              "Value": "production"
+            },
+            {
+              "Name": "NEXTAUTH_SECRET",
+              "Value": "thejerk-super-secret-production-key-2025-change-me"
+            },
+            {
+              "Name": "AWS_REGION",
+              "Value": "us-east-1"
+            }
+          ]
+        }
       }
+    },
+    "AuthenticationConfiguration": {
+      "ConnectionArn": "arn:aws:apprunner:us-east-1:640837413949:connection/github/12345678-1234-1234-1234-123456789012"
     }
   },
   "InstanceConfiguration": {

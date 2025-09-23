@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
-import { UserRole } from '@prisma/client'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
+import { UserRole } from '@/types/api'
 
 // Extended request type with user info
 export interface AuthenticatedRequest extends NextApiRequest {
@@ -25,7 +26,13 @@ export async function requireAuth(
   requiredRoles?: UserRole[]
 ): Promise<AuthenticatedRequest | null> {
   try {
-    const session = await getServerSession(req, res, {})
+    const session = await getServerSession(req, res, {
+      providers: authOptions.providers,
+      session: authOptions.session,
+      callbacks: authOptions.callbacks,
+      pages: authOptions.pages,
+      secret: authOptions.secret
+    })
 
     if (!session || !session.user) {
       res.status(401).json({ error: 'Authentication required' })
@@ -59,15 +66,15 @@ export async function requireAdmin(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<AuthenticatedRequest | null> {
-  return requireAuth(req, res, ['ADMIN'])
+  return requireAuth(req, res, [UserRole.ADMIN])
 }
 
-// Middleware for admin or staff routes
+// Middleware for admin routes (same as admin since we only have ADMIN and CUSTOMER)
 export async function requireStaffOrAdmin(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<AuthenticatedRequest | null> {
-  return requireAuth(req, res, ['ADMIN', 'STAFF'])
+  return requireAuth(req, res, [UserRole.ADMIN])
 }
 
 // Check if user belongs to the same restaurant
@@ -109,7 +116,13 @@ export async function requireSameRestaurant(
 // Utility function to get current user info
 export async function getCurrentUser(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const session = await getServerSession(req, res, {})
+    const session = await getServerSession(req, res, {
+      providers: authOptions.providers,
+      session: authOptions.session,
+      callbacks: authOptions.callbacks,
+      pages: authOptions.pages,
+      secret: authOptions.secret
+    })
     return session?.user || null
   } catch (error) {
     console.error('Error getting current user:', error)
