@@ -1,10 +1,9 @@
 name: Deploy Next.js to GitHub Pages
 
 on:
-  # Temporarily disabled to focus on Vercel deployment
-  # push:
-  #   branches: [ main ]
-  workflow_dispatch: # Manual trigger only
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Manual trigger available
 
 permissions:
   contents: read
